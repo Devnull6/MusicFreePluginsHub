@@ -15,20 +15,34 @@ jobs:
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
-      # 👇 关键：安装新版 Rust 并确保 PATH 生效
-      - name: Install Rust toolchain (>=1.82)
-        uses: dtolnay/rust-toolchain@stable
+      # Install and activate Rust toolchain 1.82.0
+      - name: Install Rust toolchain (1.82.0)
+        uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.82.0
+          profile: minimal
+          override: true
 
-      # 👇 新增：显式将 cargo bin 加入 PATH（持久化到当前 job）
+      # Ensure rustup has the toolchain and make it the default for this runner
+      - name: Ensure rustup default is 1.82.0
+        run: |
+          rustup toolchain install 1.82.0
+          rustup default 1.82.0
+          rustup show
+      # Add cargo binaries to PATH for subsequent steps
       - name: Add Cargo to PATH
         run: |
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustc --version  # 验证版本
+          # show version to confirm the runner will use the expected rustc
+          rustc --version || true
 
       - name: Install prerequisites
-        run: uv sync --all-extras --dev
+        run: |
+          # make sure PATH includes cargo bin for this run as well (immediate effect)
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustc --version
+          cargo --version
+          uv sync --all-extras --dev
 
       - name: Run Python Script
         run: uv run src/main.py
