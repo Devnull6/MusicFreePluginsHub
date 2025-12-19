@@ -2,8 +2,8 @@ name: Scheduled Python Worker
 
 on:
   schedule:
-    - cron: "0 17 */2 * *" # 每隔两天 UTC 时间 17:00 (北京时间凌晨 1:00) 运行
-  workflow_dispatch: # 添加手动触发器
+    - cron: "0 17 */2 * *"
+  workflow_dispatch:
 
 jobs:
   run-worker:
@@ -15,11 +15,17 @@ jobs:
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
-      # 👇 新增：安装新版 Rust 工具链（>=1.82）
+      # 👇 关键：安装新版 Rust 并确保 PATH 生效
       - name: Install Rust toolchain (>=1.82)
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+
+      # 👇 新增：显式将 cargo bin 加入 PATH（持久化到当前 job）
+      - name: Add Cargo to PATH
+        run: |
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustc --version  # 验证版本
 
       - name: Install prerequisites
         run: uv sync --all-extras --dev
