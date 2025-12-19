@@ -15,6 +15,12 @@ jobs:
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
+      # 👇 新增：安装新版 Rust 工具链（>=1.82）
+      - name: Install Rust toolchain (>=1.82)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
       - name: Install prerequisites
         run: uv sync --all-extras --dev
 
