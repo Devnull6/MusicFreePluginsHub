@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Install and activate Rust toolchain immediately so later Python build steps see it
+      # Install and activate Rust toolchain immediately so later build steps see it
       - name: Install Rust toolchain (1.82.0)
         uses: actions-rs/toolchain@v1
         with:
@@ -24,28 +24,39 @@ jobs:
 
       - name: Make Rust active in current shell + persist cargo bin
         run: |
+          # Ensure the toolchain is installed and the current shell uses it.
           rustup toolchain install 1.82.0 --allow-downgrade || true
           rustup default 1.82.0
+          # Persist cargo bin for subsequent steps
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          # load cargo env into the current shell (needed for the same-step builds)
+          # Load cargo env into the current shell (needed for same-step builds)
           source "$HOME/.cargo/env"
           rustc --version
           cargo --version
+
+      - name: Show PATH / debug
+        run: |
+          echo "---- which/rustc/cargo ----"
+          which rustc || true
+          rustc --version || true
+          which cargo || true
+          cargo --version || true
+          echo "---- env ----"
+          env | grep -E 'PATH|RUSTUP|CARGO' || true
 
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
       - name: Install prerequisites
         run: |
-          # ensure cargo bin is first in PATH for this run (immediate effect)
+          # Ensure cargo/bin is immediately visible in this shell
           export PATH="$HOME/.cargo/bin:$PATH"
           rustc --version
           cargo --version
           uv sync --all-extras --dev
         env:
-          # ensure the build uses the pinned toolchain
           RUSTUP_TOOLCHAIN: 1.82.0
-          # optionally set CARGO_TARGET_DIR to reuse intermediate artifacts between runs if desired
+          # Optionally set a persistent CARGO_TARGET_DIR to reuse artifacts between runs:
           # CARGO_TARGET_DIR: /tmp/cargo-target
 
       - name: Run Python Script
@@ -58,5 +69,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
           git add .
-          git diff-index --quiet HEAD || git commit -m "chore: update plugins.json"
+          git diff-index --quiet HEAD || git commit -m "chore: pin rust toolchain to 1.82 and make CI use it"
           git push
