@@ -8,14 +8,13 @@ on:
 jobs:
   run-worker:
     runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: "1.82.0"
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python environment
-        uses: ./.github/actions/setup-python
-
-      # Install and activate Rust toolchain 1.82.0
+      # Install and activate Rust toolchain immediately so later Python build steps see it
       - name: Install Rust toolchain (1.82.0)
         uses: actions-rs/toolchain@v1
         with:
@@ -23,29 +22,36 @@ jobs:
           profile: minimal
           override: true
 
-      # Ensure rustup has the toolchain and make it the default for this runner
-      - name: Ensure rustup default is 1.82.0
+      - name: Make Rust active in current shell + persist cargo bin
         run: |
-          rustup toolchain install 1.82.0
+          rustup toolchain install 1.82.0 --allow-downgrade || true
           rustup default 1.82.0
-          rustup show
-      # Add cargo binaries to PATH for subsequent steps
-      - name: Add Cargo to PATH
-        run: |
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          # show version to confirm the runner will use the expected rustc
-          rustc --version || true
+          # load cargo env into the current shell (needed for the same-step builds)
+          source "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
+
+      - name: Setup Python environment
+        uses: ./.github/actions/setup-python
 
       - name: Install prerequisites
         run: |
-          # make sure PATH includes cargo bin for this run as well (immediate effect)
+          # ensure cargo bin is first in PATH for this run (immediate effect)
           export PATH="$HOME/.cargo/bin:$PATH"
           rustc --version
           cargo --version
           uv sync --all-extras --dev
+        env:
+          # ensure the build uses the pinned toolchain
+          RUSTUP_TOOLCHAIN: 1.82.0
+          # optionally set CARGO_TARGET_DIR to reuse intermediate artifacts between runs if desired
+          # CARGO_TARGET_DIR: /tmp/cargo-target
 
       - name: Run Python Script
         run: uv run src/main.py
+        env:
+          RUSTUP_TOOLCHAIN: 1.82.0
 
       - name: Commit and Push
         run: |
