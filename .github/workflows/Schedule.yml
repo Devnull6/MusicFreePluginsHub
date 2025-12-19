@@ -12,25 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 👇 新增：安装 Node.js (提供 npm)
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'  # 或 'lts/*', '22'
-          cache: npm
-
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
-      # 👇 安装新版 Rust（现在可简化，因为 Node.js 已处理）
-      - name: Install Rust toolchain
+      # 👇 关键：安装新版 Rust 并确保 PATH 生效
+      - name: Install Rust toolchain (>=1.82)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      # 👇 新增：显式将 cargo bin 加入 PATH（持久化到当前 job）
+      - name: Add Cargo to PATH
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustc --version  # 验证版本
 
       - name: Install prerequisites
-        env:
-          RUSTUP_TOOLCHAIN: stable
         run: uv sync --all-extras --dev
 
       - name: Run Python Script
