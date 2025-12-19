@@ -15,19 +15,22 @@ jobs:
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
 
-      # 👇 关键：安装新版 Rust 并确保 PATH 生效
-      - name: Install Rust toolchain (>=1.82)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      # 👇 新增：显式将 cargo bin 加入 PATH（持久化到当前 job）
-      - name: Add Cargo to PATH
+      # 👇 关键：安装新版 Rust 并设置默认 toolchain
+      - name: Install Rust >=1.82 and set as default
         run: |
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustc --version  # 验证版本
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          source "$HOME/.cargo/env"
+          rustc --version
 
+      # 👇 关键：将 cargo bin 加入 PATH（持久化）
+      - name: Add Cargo to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      # 👇 关键：设置环境变量，防止 setup.sh 重装 Rust
       - name: Install prerequisites
+        env:
+          RUSTUP_TOOLCHAIN: stable
+          PATH: $HOME/.cargo/bin:$PATH
         run: uv sync --all-extras --dev
 
       - name: Run Python Script
